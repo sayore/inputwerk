@@ -9,6 +9,14 @@ libxkbcommon and installs it for desktop targets such as COSMIC.
 The project currently ships the `amelie` profile. Its full keymap remains the
 source of truth; generated component files are reproducible build artifacts.
 
+The profile is for users missing the less than and greater than keys on an english layouted keyboard. It adds AltGr+auo for äöü (Umlaute), the < and > kes on AltGr + , and .
+
+Stab/Strich Pipe Symbol is also added on AltGr + #.
+
+- and + are on one key on the german -.
+
+Basically this is a QWERTZ merge between de and us layout so a 87 keyboard works. Other profiles may and can be added by others, later on able to install ideally via a single command in my package manager so the fight with OS bs keymaps is finally over.
+
 [![Layer 5 keymap preview](docs/keymap-preview.svg)](https://sayore.github.io/inputwerk/)
 
 **[Open the interactive keymap visualizer](https://sayore.github.io/inputwerk/)**
