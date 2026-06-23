@@ -13,7 +13,7 @@ The profile is for users missing the less than and greater than keys on an engli
 
 Stab/Strich Pipe Symbol is also added on AltGr + #.
 
-- and + are on one key on the german -.
+\- and + are on one key on the german -.
 
 Basically this is a QWERTZ merge between de and us layout so a 87 keyboard works. Other profiles may and can be added by others, later on able to install ideally via a single command in my package manager so the fight with OS bs keymaps is finally over.
 
