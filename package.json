@@ -4,6 +4,11 @@
   "description": "Portable Linux keymap recipes for XKB, Wayland and desktop targets",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/cli.ts",
+    "./element": "./src/web/inputwerk-keymap.js",
+    "./parser": "./src/keymap.ts"
+  },
   "bin": {
     "inputwerk": "src/cli.ts"
   },
@@ -16,6 +21,9 @@
     "keymap": "bun src/cli.ts",
     "generate": "bun src/cli.ts generate",
     "validate": "bun src/cli.ts validate",
+    "test": "bun test",
+    "visualize": "bun src/cli.ts visualize --output dist/amelie-keymap.html --json dist/amelie-keymap.json",
+    "docs": "bun src/cli.ts visualize --output docs/index.html --json docs/keymap.json --svg docs/keymap-preview.svg --layer 5",
     "install:cosmic": "bun src/cli.ts install --target cosmic --scope user",
     "build:binary": "bun build src/cli.ts --compile --outfile dist/inputwerk",
     "status": "bun src/cli.ts status"
