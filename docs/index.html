@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>German (no dead keys) · inputwerk</title>
+  <style>
+    html { background: #0a0c10; color: #f5f7fb; }
+    body { margin: 0; min-height: 100vh; padding: clamp(16px, 5vw, 72px); }
+    main { margin: auto; max-width: 1500px; }
+  </style>
+</head>
+<body>
+  <main><inputwerk-keymap id="keymap"></inputwerk-keymap></main>
+  <script type="module">
+const template = document.createElement("template");
+template.innerHTML = `
+  <style>
+    :host {
+      --iw-bg: #111318;
+      --iw-panel: #191c23;
+      --iw-key: #252a34;
+      --iw-key-active: #343c4b;
+      --iw-text: #f5f7fb;
+      --iw-muted: #929aab;
+      --iw-accent: #a8ff78;
+      --iw-border: #383f4c;
+      color: var(--iw-text);
+      display: block;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    .shell {
+      background: var(--iw-bg);
+      border: 1px solid var(--iw-border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    header {
+      align-items: end;
+      background: linear-gradient(135deg, #1c212b, #15171d);
+      border-bottom: 1px solid var(--iw-border);
+      display: flex;
+      gap: 24px;
+      justify-content: space-between;
+      padding: 24px;
+    }
+    h2 { font-size: clamp(1.25rem, 2.6vw, 2rem); margin: 0 0 5px; }
+    .eyebrow {
+      color: var(--iw-accent);
+      font-family: ui-monospace, monospace;
+      font-size: .72rem;
+      letter-spacing: .14em;
+      margin: 0 0 8px;
+      text-transform: uppercase;
+    }
+    .current { color: var(--iw-muted); font-size: .9rem; margin: 0; }
+    .current strong { color: var(--iw-text); font-weight: 600; }
+    .layers { display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; }
+    .layer {
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--iw-border);
+      border-radius: 999px;
+      color: var(--iw-muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: .78rem;
+      padding: 7px 11px;
+    }
+    .layer:hover { border-color: var(--iw-muted); color: var(--iw-text); }
+    .layer[aria-pressed="true"] {
+      background: var(--iw-accent);
+      border-color: var(--iw-accent);
+      color: #11150f;
+      font-weight: 700;
+    }
+    .keyboard-wrap { overflow-x: auto; padding: 28px 24px 20px; }
+    .keyboard { display: grid; gap: 7px; min-width: 900px; }
+    .row { display: flex; gap: 7px; }
+    .key {
+      align-items: center;
+      appearance: none;
+      background: linear-gradient(145deg, var(--iw-key-active), var(--iw-key));
+      border: 1px solid #424957;
+      border-bottom-color: #101217;
+      border-radius: 8px;
+      box-shadow: 0 3px 0 #0c0e12;
+      display: flex;
+      flex: var(--key-width, 1) 0 0;
+      color: inherit;
+      cursor: default;
+      font: inherit;
+      height: 58px;
+      justify-content: center;
+      min-width: 0;
+      padding: 6px;
+      position: relative;
+    }
+    .key.empty { color: #596170; }
+    .symbol {
+      font-size: clamp(.72rem, 1.4vw, 1.05rem);
+      font-weight: 650;
+      line-height: 1.05;
+      max-width: 100%;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .key[data-length="long"] .symbol { font-size: .7rem; }
+    .key[data-length="extra-long"] .symbol { font-size: .6rem; }
+    .code {
+      bottom: 4px;
+      color: var(--iw-muted);
+      font-family: ui-monospace, monospace;
+      font-size: .48rem;
+      left: 5px;
+      letter-spacing: .03em;
+      position: absolute;
+    }
+    details { border-top: 1px solid var(--iw-border); padding: 14px 24px 24px; }
+    summary { color: var(--iw-muted); cursor: pointer; font-size: .82rem; }
+    .extras { display: grid; gap: 7px; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); padding-top: 16px; }
+    .extras .key { height: 54px; }
+    .hint { color: var(--iw-muted); font-size: .73rem; margin: 0; padding: 0 24px 22px; }
+    .inspector {
+      border-top: 1px solid var(--iw-border);
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 10px;
+      padding: 18px 24px;
+    }
+    .inspector span { color: var(--iw-muted); display: block; font-size: .65rem; letter-spacing: .08em; margin-bottom: 4px; text-transform: uppercase; }
+    .inspector strong { display: block; font-family: ui-monospace, monospace; font-size: .82rem; overflow-wrap: anywhere; }
+    .error { color: #ff8e8e; padding: 24px; }
+    @media (max-width: 760px) {
+      header { align-items: start; flex-direction: column; }
+      .layers { justify-content: flex-start; }
+      .keyboard-wrap { padding-inline: 14px; }
+      .inspector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+  <div class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">inputwerk · XKB</p>
+        <h2></h2>
+        <p class="current">Layer <strong></strong></p>
+      </div>
+      <nav class="layers" aria-label="Keymap layers"></nav>
+    </header>
+    <div class="keyboard-wrap"><div class="keyboard"></div></div>
+    <section class="inspector" aria-label="Selected key details" aria-live="polite">
+      <div><span>Keycode</span><strong data-field="code">Hover or focus a key</strong></div>
+      <div><span>Keysym</span><strong data-field="symbol">—</strong></div>
+      <div><span>XKB type</span><strong data-field="type">—</strong></div>
+      <div><span>Effective modifier</span><strong data-field="level">—</strong></div>
+    </section>
+    <p class="hint">Switch layers with the buttons, number keys, or ← → while this element is focused.</p>
+    <details><summary></summary><div class="extras"></div></details>
+  </div>
+`;
+
+export class InputwerkKeymapElement extends HTMLElement {
+  static observedAttributes = ["src", "layer"];
+
+  #data = null;
+  #layer = 0;
+  #loading = false;
+  #selected = null;
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+    this.tabIndex = this.tabIndex < 0 ? 0 : this.tabIndex;
+  }
+
+  connectedCallback() {
+    this.addEventListener("keydown", this.#onKeydown);
+    if (this.hasAttribute("src") && !this.#data) this.#load();
+    else this.#render();
+  }
+
+  disconnectedCallback() {
+    this.removeEventListener("keydown", this.#onKeydown);
+  }
+
+  attributeChangedCallback(name, previous, value) {
+    if (previous === value) return;
+    if (name === "src" && this.isConnected) this.#load();
+    if (name === "layer") this.layer = Number(value) - 1;
+  }
+
+  set data(value) {
+    this.#data = value;
+    const requested = this.hasAttribute("layer") ? Number(this.getAttribute("layer")) - 1 : this.#layer;
+    this.#layer = Math.max(0, Math.min(requested, Math.max(0, (value?.levels?.length ?? 1) - 1)));
+    this.#render();
+  }
+
+  get data() { return this.#data; }
+
+  set layer(value) {
+    const maximum = Math.max(0, (this.#data?.levels?.length ?? 1) - 1);
+    this.#layer = Math.max(0, Math.min(maximum, Number.isFinite(value) ? value : 0));
+    this.#render();
+  }
+
+  get layer() { return this.#layer; }
+
+  async #load() {
+    if (this.#loading) return;
+    this.#loading = true;
+    try {
+      const response = await fetch(this.getAttribute("src"));
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      this.data = await response.json();
+    } catch (error) {
+      const message = document.createElement("p");
+      message.className = "error";
+      message.textContent = String(error);
+      this.shadowRoot.querySelector(".keyboard").replaceChildren(message);
+    } finally {
+      this.#loading = false;
+    }
+  }
+
+  #onKeydown = (event) => {
+    if (!this.#data) return;
+    if (/^[1-9]$/.test(event.key)) this.layer = Number(event.key) - 1;
+    else if (event.key === "ArrowRight") this.layer = (this.#layer + 1) % this.#data.levels.length;
+    else if (event.key === "ArrowLeft") this.layer = (this.#layer - 1 + this.#data.levels.length) % this.#data.levels.length;
+    else return;
+    event.preventDefault();
+  };
+
+  #key(key) {
+    const element = document.createElement("button");
+    const label = key.labels[this.#layer] ?? "";
+    const raw = key.symbols[this.#layer] ?? "NoSymbol";
+    element.className = `key${label ? "" : " empty"}`;
+    element.type = "button";
+    element.style.setProperty("--key-width", key.width ?? 1);
+    element.dataset.length = label.length > 16 ? "extra-long" : label.length > 9 ? "long" : "short";
+    element.title = `${key.code} · ${key.type ?? "inferred"} · ${raw}`;
+    element.setAttribute("aria-label", `${key.code}: ${label || "No symbol"}`);
+    element.addEventListener("pointerenter", () => this.#inspect(key));
+    element.addEventListener("focus", () => this.#inspect(key));
+    element.addEventListener("click", () => this.#inspect(key));
+
+    const symbol = document.createElement("span");
+    symbol.className = "symbol";
+    symbol.textContent = label || "·";
+    const code = document.createElement("span");
+    code.className = "code";
+    code.textContent = key.code;
+    element.append(symbol, code);
+    return element;
+  }
+
+  #inspect(key) {
+    this.#selected = key.code;
+    const fields = this.shadowRoot.querySelector(".inspector");
+    fields.querySelector('[data-field="code"]').textContent = key.code;
+    fields.querySelector('[data-field="symbol"]').textContent = key.symbols[this.#layer] ?? "NoSymbol";
+    fields.querySelector('[data-field="type"]').textContent = key.type ?? "inferred";
+    fields.querySelector('[data-field="level"]').textContent = key.levelNames[this.#layer] ?? "Not defined for this type";
+  }
+
+  #render() {
+    if (!this.#data || !this.isConnected) return;
+    const root = this.shadowRoot;
+    root.querySelector("h2").textContent = this.#data.name;
+    root.querySelector(".current strong").textContent = `${this.#layer + 1} · ${this.#data.levels[this.#layer]?.name ?? "Unknown"}`;
+
+    const layers = root.querySelector(".layers");
+    layers.replaceChildren(...this.#data.levels.map((level, index) => {
+      const button = document.createElement("button");
+      button.className = "layer";
+      button.type = "button";
+      button.textContent = `${level.index} ${level.name}`;
+      button.setAttribute("aria-pressed", String(index === this.#layer));
+      button.addEventListener("click", () => { this.layer = index; });
+      return button;
+    }));
+
+    const keyboard = root.querySelector(".keyboard");
+    keyboard.replaceChildren(...this.#data.rows.map((row) => {
+      const element = document.createElement("div");
+      element.className = "row";
+      element.append(...row.keys.map((key) => this.#key(key)));
+      return element;
+    }));
+
+    const details = root.querySelector("details");
+    details.hidden = this.#data.extras.length === 0;
+    details.querySelector("summary").textContent = `${this.#data.extras.length} additional media, navigation, and keypad keys`;
+    details.querySelector(".extras").replaceChildren(...this.#data.extras.map((key) => this.#key(key)));
+
+    const allKeys = [...this.#data.rows.flatMap((row) => row.keys), ...this.#data.extras];
+    const selected = allKeys.find((key) => key.code === this.#selected)
+      ?? allKeys.find((key) => key.labels[this.#layer]);
+    if (selected) this.#inspect(selected);
+  }
+}
+
+if (!customElements.get("inputwerk-keymap")) {
+  customElements.define("inputwerk-keymap", InputwerkKeymapElement);
+}
+
+    document.querySelector("#keymap").data = {"format":"inputwerk/keymap-v1","name":"German (no dead keys)","levels":[{"index":1,"name":"Base"},{"index":2,"name":"Shift"},{"index":3,"name":"AltGr"},{"index":4,"name":"Shift AltGr"},{"index":5,"name":"Caps"},{"index":6,"name":"Shift Caps"},{"index":7,"name":"Caps AltGr"},{"index":8,"name":"Shift Caps AltGr"}],"rows":[{"keys":[{"code":"ESC","type":null,"symbols":["Escape"],"labels":["Esc"],"levelNames":["Base"]},{"code":"FK01","type":"CTRL+ALT","symbols":["F1","F1","F1","F1","XF86Switch_VT_1"],"labels":["F1","F1","F1","F1","Switch VT 1"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK02","type":"CTRL+ALT","symbols":["F2","F2","F2","F2","XF86Switch_VT_2"],"labels":["F2","F2","F2","F2","Switch VT 2"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK03","type":"CTRL+ALT","symbols":["F3","F3","F3","F3","XF86Switch_VT_3"],"labels":["F3","F3","F3","F3","Switch VT 3"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK04","type":"CTRL+ALT","symbols":["F4","F4","F4","F4","XF86Switch_VT_4"],"labels":["F4","F4","F4","F4","Switch VT 4"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK05","type":"CTRL+ALT","symbols":["F5","F5","F5","F5","XF86Switch_VT_5"],"labels":["F5","F5","F5","F5","Switch VT 5"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK06","type":"CTRL+ALT","symbols":["F6","F6","F6","F6","XF86Switch_VT_6"],"labels":["F6","F6","F6","F6","Switch VT 6"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK07","type":"CTRL+ALT","symbols":["F7","F7","F7","F7","XF86Switch_VT_7"],"labels":["F7","F7","F7","F7","Switch VT 7"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK08","type":"CTRL+ALT","symbols":["F8","F8","F8","F8","XF86Switch_VT_8"],"labels":["F8","F8","F8","F8","Switch VT 8"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK09","type":"CTRL+ALT","symbols":["F9","F9","F9","F9","XF86Switch_VT_9"],"labels":["F9","F9","F9","F9","Switch VT 9"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK10","type":"CTRL+ALT","symbols":["F10","F10","F10","F10","XF86Switch_VT_10"],"labels":["F10","F10","F10","F10","Switch VT 10"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK11","type":"CTRL+ALT","symbols":["F11","F11","F11","F11","XF86Switch_VT_11"],"labels":["F11","F11","F11","F11","Switch VT 11"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"FK12","type":"CTRL+ALT","symbols":["F12","F12","F12","F12","XF86Switch_VT_12"],"labels":["F12","F12","F12","F12","Switch VT 12"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]}]},{"keys":[{"code":"TLDE","type":"FOUR_LEVEL","symbols":["asciicircum","degree","notsign","notsign"],"labels":["^","°","¬","¬"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AE01","type":"AMY_8_LEVEL","symbols":["1","exclam","F13","F1","3","4","5","6"],"labels":["1","!","F13","F1","3","4","5","6"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE02","type":"AMY_8_LEVEL","symbols":["2","quotedbl","F14","F2","at","oneeighth","NoSymbol","NoSymbol"],"labels":["2","\"","F14","F2","@","⅛","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE03","type":"AMY_8_LEVEL","symbols":["3","section","F15","F3","sterling","sterling","NoSymbol","NoSymbol"],"labels":["3","§","F15","F3","£","£","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE04","type":"AMY_8_LEVEL","symbols":["4","dollar","F16","F4","onequarter","currency","NoSymbol","NoSymbol"],"labels":["4","$","F16","F4","¼","¤","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE05","type":"AMY_8_LEVEL","symbols":["5","percent","F17","F5","onehalf","threeeighths","NoSymbol","NoSymbol"],"labels":["5","%","F17","F5","½","⅜","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE06","type":"AMY_8_LEVEL","symbols":["6","ampersand","F18","F6","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["6","&","F18","F6","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE07","type":"AMY_8_LEVEL","symbols":["7","slash","F19","F7","braceleft","NoSymbol","NoSymbol","NoSymbol"],"labels":["7","/","F19","F7","{","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE08","type":"AMY_8_LEVEL","symbols":["8","parenleft","F20","F8","bracketleft","NoSymbol","NoSymbol","NoSymbol"],"labels":["8","(","F20","F8","[","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE09","type":"AMY_8_LEVEL","symbols":["9","parenright","F21","F9","bracketright","plusminus","bracketright","NoSymbol"],"labels":["9",")","F21","F9","]","±","]",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE10","type":"AMY_8_LEVEL","symbols":["0","equal","F22","F10","braceright","degree","braceright","NoSymbol"],"labels":["0","=","F22","F10","}","°","}",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AE11","type":"AMY_8_LEVEL","symbols":["backslash","question","ssharp","U1E9E","slash","questiondown"],"labels":["\\","?","ß","ẞ","/","¿"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"AE12","type":"AMY_8_LEVEL","symbols":["acute","grave","cedilla","grave","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["´","`","¸","`","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"BKSP","type":null,"symbols":["BackSpace","BackSpace"],"labels":["Backspace","Backspace"],"levelNames":["Base","Shift"],"width":2}]},{"keys":[{"code":"TAB","type":null,"symbols":["Tab","ISO_Left_Tab"],"labels":["Tab","⇤"],"levelNames":["Base","Shift"],"width":1.5},{"code":"AD01","type":"AMY_8_LEVEL","symbols":["q","Q","at","Greek_OMEGA","at","Greek_OMEGA","at","NoSymbol"],"labels":["q","Q","@","Ω","@","Ω","@",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD02","type":"AMY_8_LEVEL","symbols":["w","W","U017F","section","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["w","W","ſ","§","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD03","type":"AMY_8_LEVEL","symbols":["e","E","EuroSign","EuroSign","EuroSign","EuroSign","NoSymbol","NoSymbol"],"labels":["e","E","€","€","€","€","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD04","type":"AMY_8_LEVEL","symbols":["r","R","paragraph","registered","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["r","R","¶","®","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD05","type":"AMY_8_LEVEL","symbols":["t","T","trademark","NoSymbol","tslash","Tslash","NoSymbol","NoSymbol"],"labels":["t","T","™","","tslash","Tslash","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD06","type":"AMY_8_LEVEL","symbols":["z","Z","denied","checkmark","yen","NoSymbol","NoSymbol","NoSymbol"],"labels":["z","Z","denied","checkmark","¥","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD07","type":"AMY_8_LEVEL","symbols":["u","U","downarrow","uparrow","udiaeresis","Udiaeresis","NoSymbol","NoSymbol"],"labels":["u","U","↓","↑","ü","Ü","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD08","type":"AMY_8_LEVEL","symbols":["i","I","rightarrow","idotless","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["i","I","→","ı","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD09","type":"AMY_8_LEVEL","symbols":["o","O","oslash","Oslash","odiaeresis","Odiaeresis","NoSymbol","NoSymbol"],"labels":["o","O","ø","Ø","ö","Ö","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD10","type":"AMY_8_LEVEL","symbols":["p","P","thorn","THORN","NoSymbol","NoSymbol","NoSymbol","NoSymbol"],"labels":["p","P","þ","Þ","","","",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD11","type":"AMY_8_LEVEL","symbols":["bracketleft","braceleft","diaeresis","diaeresis","asciitilde","asterisk","plus","NoSymbol"],"labels":["[","{","¨","¨","~","*","+",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"AD12","type":"AMY_8_LEVEL","symbols":["bracketright","braceright","asciitilde","macron","asciitilde","asterisk","plus","NoSymbol"],"labels":["]","}","~","¯","~","*","+",""],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps","Caps AltGr","Shift Caps AltGr"]},{"code":"BKSL","type":"AMY_8_LEVEL","symbols":["numbersign","apostrophe","rightsinglequotemark","grave","bar"],"labels":["#","'","’","`","|"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps"],"width":1.5}]},{"keys":[{"code":"CAPS","type":"ONE_LEVEL","symbols":["ISO_Level3_Shift"],"labels":["Level 3"],"levelNames":["Any"],"width":1.8},{"code":"AC01","type":"AMY_8_LEVEL","symbols":["a","A","U20EB","AE","adiaeresis","Adiaeresis"],"labels":["a","A","⃫","AE","ä","Ä"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"AC02","type":"AMY_8_LEVEL","symbols":["s","S","U1F62D","U1E9E","ssharp","ssharp"],"labels":["s","S","😭","ẞ","ß","ß"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"AC03","type":"FOUR_LEVEL_ALPHABETIC","symbols":["d","D","eth","ETH"],"labels":["d","D","ð","Ð"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC04","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["f","F","dstroke","ordfeminine"],"labels":["f","F","dstroke","ª"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC05","type":"FOUR_LEVEL_ALPHABETIC","symbols":["g","G","eng","ENG"],"labels":["g","G","eng","ENG"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC06","type":"FOUR_LEVEL_ALPHABETIC","symbols":["h","H","U2764","UFE0F"],"labels":["h","H","❤","️"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC07","type":"FOUR_LEVEL_ALPHABETIC","symbols":["j","J","ezh","EZH"],"labels":["j","J","ezh","EZH"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC08","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["k","K","kra","ampersand"],"labels":["k","K","kra","&"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC09","type":"FOUR_LEVEL_ALPHABETIC","symbols":["l","L","U1F92D","U1F923"],"labels":["l","L","🤭","🤣"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC10","type":"AMY_8_LEVEL","symbols":["semicolon","colon","doubleacute","doubleacute"],"labels":[";",":","doubleacute","doubleacute"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AC11","type":"AMY_8_LEVEL","symbols":["apostrophe","quotedbl","asciicircum","asciicircum"],"labels":["'","\"","^","^"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"RTRN","type":null,"symbols":["Return"],"labels":["Enter"],"levelNames":["Base"],"width":2.2}]},{"keys":[{"code":"LFSH","type":null,"symbols":["Shift_L"],"labels":["Shift"],"levelNames":["Base"],"width":1.4},{"code":"LSGT","type":"FOUR_LEVEL","symbols":["less","greater","bar","dagger"],"labels":["\u003c",">","|","†"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB01","type":"AMY_8_LEVEL","symbols":["y","Y","U2705","notsign","yen"],"labels":["y","Y","✅","¬","¥"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps"]},{"code":"AB02","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["x","X","guillemotleft","U2039"],"labels":["x","X","«","‹"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB03","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["c","C","cent","copyright"],"labels":["c","C","cent","copyright"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB04","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["v","V","doublelowquotemark","singlelowquotemark"],"labels":["v","V","„","‚"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB05","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["b","B","leftdoublequotemark","leftsinglequotemark"],"labels":["b","B","“","‘"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB06","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["n","N","U1F913","rightsinglequotemark"],"labels":["n","N","🤓","’"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB07","type":"FOUR_LEVEL_SEMIALPHABETIC","symbols":["m","M","mu","masculine"],"labels":["m","M","µ","º"],"levelNames":["Base","Shift","AltGr","Shift AltGr"]},{"code":"AB08","type":"AMY_8_LEVEL","symbols":["comma","semicolon","periodcentered","multiply","less","less"],"labels":[",",";","·","×","\u003c","\u003c"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"AB09","type":"AMY_8_LEVEL","symbols":["period","colon","U2026","division","greater","greater"],"labels":[".",":","…","÷",">",">"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"AB10","type":"AMY_8_LEVEL","symbols":["minus","plus","endash","emdash","underscore","underscore"],"labels":["−","+","–","—","_","_"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Caps","Shift Caps"]},{"code":"RTSH","type":null,"symbols":["Shift_R"],"labels":["Shift"],"levelNames":["Base"],"width":2.6}]},{"keys":[{"code":"LCTL","type":null,"symbols":["Control_L"],"labels":["Ctrl"],"levelNames":["Base"],"width":1.4},{"code":"LWIN","type":null,"symbols":["Super_L"],"labels":["Super"],"levelNames":["Base"],"width":1.2},{"code":"LALT","type":null,"symbols":["Alt_L"],"labels":["Alt"],"levelNames":["Base"],"width":1.2},{"code":"SPCE","type":null,"symbols":["space"],"labels":["Space"],"levelNames":["Base"],"width":6.2},{"code":"RALT","type":"ONE_LEVEL","symbols":["ISO_Level5_Shift"],"labels":["Level 5"],"levelNames":["Any"],"width":1.2},{"code":"RWIN","type":null,"symbols":["Super_R"],"labels":["Super"],"levelNames":["Base"],"width":1.2},{"code":"COMP","type":null,"symbols":["Menu"],"labels":["Menu"],"levelNames":["Base"],"width":1.2},{"code":"RCTL","type":null,"symbols":["Control_R"],"labels":["Ctrl"],"levelNames":["Base"],"width":1.4}]}],"extras":[{"code":"KPMU","type":"CTRL+ALT","symbols":["KP_Multiply","KP_Multiply","KP_Multiply","KP_Multiply","XF86ClearGrab"],"labels":["Multiply","Multiply","Multiply","Multiply","Clear Grab"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"NMLK","type":null,"symbols":["Num_Lock"],"labels":["Num Lock"],"levelNames":["Base"]},{"code":"SCLK","type":null,"symbols":["Scroll_Lock"],"labels":["Scroll Lock"],"levelNames":["Base"]},{"code":"KP7","type":null,"symbols":["KP_Home","KP_7"],"labels":["Home","7"],"levelNames":["Base","Shift"]},{"code":"KP8","type":null,"symbols":["KP_Up","KP_8"],"labels":["Up","8"],"levelNames":["Base","Shift"]},{"code":"KP9","type":null,"symbols":["KP_Prior","KP_9"],"labels":["Prior","9"],"levelNames":["Base","Shift"]},{"code":"KPSU","type":"CTRL+ALT","symbols":["KP_Subtract","KP_Subtract","KP_Subtract","KP_Subtract","XF86Prev_VMode"],"labels":["Subtract","Subtract","Subtract","Subtract","Prev VMode"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"KP4","type":null,"symbols":["KP_Left","KP_4"],"labels":["Left","4"],"levelNames":["Base","Shift"]},{"code":"KP5","type":null,"symbols":["KP_Begin","KP_5"],"labels":["Begin","5"],"levelNames":["Base","Shift"]},{"code":"KP6","type":null,"symbols":["KP_Right","KP_6"],"labels":["Right","6"],"levelNames":["Base","Shift"]},{"code":"KPAD","type":"CTRL+ALT","symbols":["KP_Add","KP_Add","KP_Add","KP_Add","XF86Next_VMode"],"labels":["Add","Add","Add","Add","Next VMode"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"KP1","type":null,"symbols":["KP_End","KP_1"],"labels":["End","1"],"levelNames":["Base","Shift"]},{"code":"KP2","type":null,"symbols":["KP_Down","KP_2"],"labels":["Down","2"],"levelNames":["Base","Shift"]},{"code":"KP3","type":null,"symbols":["KP_Next","KP_3"],"labels":["Next","3"],"levelNames":["Base","Shift"]},{"code":"KP0","type":null,"symbols":["KP_Insert","KP_0"],"labels":["Insert","0"],"levelNames":["Base","Shift"]},{"code":"KPDL","type":"KEYPAD","symbols":["KP_Delete","KP_Separator"],"labels":["Delete","Separator"],"levelNames":["Base","Number"]},{"code":"LVL3","type":null,"symbols":["ISO_Level3_Shift"],"labels":["Level 3"],"levelNames":["Base"]},{"code":"ZEHA","type":null,"symbols":["XF86TouchpadToggle"],"labels":["Touchpad Toggle"],"levelNames":["Base"]},{"code":"KATA","type":null,"symbols":["Katakana"],"labels":["Katakana"],"levelNames":["Base"]},{"code":"HIRA","type":null,"symbols":["Hiragana"],"labels":["Hiragana"],"levelNames":["Base"]},{"code":"HENK","type":null,"symbols":["Henkan_Mode"],"labels":["Henkan Mode"],"levelNames":["Base"]},{"code":"HKTG","type":null,"symbols":["Hiragana_Katakana"],"labels":["Hiragana Katakana"],"levelNames":["Base"]},{"code":"MUHE","type":null,"symbols":["Muhenkan"],"labels":["Muhenkan"],"levelNames":["Base"]},{"code":"KPEN","type":null,"symbols":["KP_Enter"],"labels":["Enter"],"levelNames":["Base"]},{"code":"KPDV","type":"CTRL+ALT","symbols":["KP_Divide","KP_Divide","KP_Divide","KP_Divide","XF86Ungrab"],"labels":["Divide","Divide","Divide","Divide","Ungrab"],"levelNames":["Base","Shift","AltGr","Shift AltGr","Ctrl+Alt"]},{"code":"PRSC","type":"PC_ALT_LEVEL2","symbols":["Print","Sys_Req"],"labels":["Print","Sys Req"],"levelNames":["Base","Alt"]},{"code":"LNFD","type":null,"symbols":["Linefeed"],"labels":["Linefeed"],"levelNames":["Base"]},{"code":"HOME","type":null,"symbols":["Home"],"labels":["Home"],"levelNames":["Base"]},{"code":"UP","type":null,"symbols":["Up"],"labels":["Up"],"levelNames":["Base"]},{"code":"PGUP","type":null,"symbols":["Prior"],"labels":["Prior"],"levelNames":["Base"]},{"code":"LEFT","type":null,"symbols":["Left"],"labels":["Left"],"levelNames":["Base"]},{"code":"RGHT","type":null,"symbols":["Right"],"labels":["Right"],"levelNames":["Base"]},{"code":"END","type":null,"symbols":["End"],"labels":["End"],"levelNames":["Base"]},{"code":"DOWN","type":null,"symbols":["Down"],"labels":["Down"],"levelNames":["Base"]},{"code":"PGDN","type":null,"symbols":["Next"],"labels":["Next"],"levelNames":["Base"]},{"code":"INS","type":null,"symbols":["Insert"],"labels":["Insert"],"levelNames":["Base"]},{"code":"DELE","type":null,"symbols":["Delete"],"labels":["Delete"],"levelNames":["Base"]},{"code":"MUTE","type":null,"symbols":["XF86AudioMute"],"labels":["Audio Mute"],"levelNames":["Base"]},{"code":"VOL-","type":null,"symbols":["XF86AudioLowerVolume"],"labels":["Audio Lower Volume"],"levelNames":["Base"]},{"code":"VOL+","type":null,"symbols":["XF86AudioRaiseVolume"],"labels":["Audio Raise Volume"],"levelNames":["Base"]},{"code":"POWR","type":null,"symbols":["XF86PowerOff"],"labels":["Power Off"],"levelNames":["Base"]},{"code":"KPEQ","type":null,"symbols":["KP_Equal"],"labels":["Equal"],"levelNames":["Base"]},{"code":"I126","type":null,"symbols":["plusminus"],"labels":["±"],"levelNames":["Base"]},{"code":"PAUS","type":"PC_CONTROL_LEVEL2","symbols":["Pause","Break"],"labels":["Pause","Break"],"levelNames":["Base","Control"]},{"code":"I128","type":null,"symbols":["XF86LaunchA"],"labels":["Launch A"],"levelNames":["Base"]},{"code":"I129","type":null,"symbols":["KP_Decimal","KP_Decimal"],"labels":["Decimal","Decimal"],"levelNames":["Base","Shift"]},{"code":"HNGL","type":null,"symbols":["Hangul"],"labels":["Hangul"],"levelNames":["Base"]},{"code":"HJCV","type":null,"symbols":["Hangul_Hanja"],"labels":["Hangul Hanja"],"levelNames":["Base"]},{"code":"STOP","type":null,"symbols":["Cancel"],"labels":["Cancel"],"levelNames":["Base"]},{"code":"AGAI","type":null,"symbols":["Redo"],"labels":["Redo"],"levelNames":["Base"]},{"code":"PROP","type":null,"symbols":["SunProps"],"labels":["SunProps"],"levelNames":["Base"]},{"code":"UNDO","type":null,"symbols":["Undo"],"labels":["Undo"],"levelNames":["Base"]},{"code":"FRNT","type":null,"symbols":["SunFront"],"labels":["SunFront"],"levelNames":["Base"]},{"code":"COPY","type":null,"symbols":["XF86Copy"],"labels":["Copy"],"levelNames":["Base"]},{"code":"OPEN","type":null,"symbols":["XF86Open"],"labels":["Open"],"levelNames":["Base"]},{"code":"PAST","type":null,"symbols":["XF86Paste"],"labels":["Paste"],"levelNames":["Base"]},{"code":"FIND","type":null,"symbols":["Find"],"labels":["Find"],"levelNames":["Base"]},{"code":"CUT","type":null,"symbols":["XF86Cut"],"labels":["Cut"],"levelNames":["Base"]},{"code":"HELP","type":null,"symbols":["Help"],"labels":["Help"],"levelNames":["Base"]},{"code":"I147","type":null,"symbols":["XF86MenuKB"],"labels":["Menu KB"],"levelNames":["Base"]},{"code":"I148","type":null,"symbols":["XF86Calculator"],"labels":["Calculator"],"levelNames":["Base"]},{"code":"I150","type":null,"symbols":["XF86Sleep"],"labels":["Sleep"],"levelNames":["Base"]},{"code":"I151","type":null,"symbols":["XF86WakeUp"],"labels":["Wake Up"],"levelNames":["Base"]},{"code":"I152","type":null,"symbols":["XF86Explorer"],"labels":["Explorer"],"levelNames":["Base"]},{"code":"I153","type":null,"symbols":["XF86Send"],"labels":["Send"],"levelNames":["Base"]},{"code":"I155","type":null,"symbols":["XF86Xfer"],"labels":["Xfer"],"levelNames":["Base"]},{"code":"I156","type":null,"symbols":["XF86Launch1"],"labels":["Launch1"],"levelNames":["Base"]},{"code":"I157","type":null,"symbols":["XF86Launch2"],"labels":["Launch2"],"levelNames":["Base"]},{"code":"I158","type":null,"symbols":["XF86WWW"],"labels":["WWW"],"levelNames":["Base"]},{"code":"I159","type":null,"symbols":["XF86DOS"],"labels":["DOS"],"levelNames":["Base"]},{"code":"I160","type":null,"symbols":["XF86ScreenSaver"],"labels":["Screen Saver"],"levelNames":["Base"]},{"code":"I161","type":null,"symbols":["XF86RotateWindows"],"labels":["Rotate Windows"],"levelNames":["Base"]},{"code":"I162","type":null,"symbols":["XF86TaskPane"],"labels":["Task Pane"],"levelNames":["Base"]},{"code":"I163","type":null,"symbols":["XF86Mail"],"labels":["Mail"],"levelNames":["Base"]},{"code":"I164","type":null,"symbols":["XF86Favorites"],"labels":["Favorites"],"levelNames":["Base"]},{"code":"I165","type":null,"symbols":["XF86MyComputer"],"labels":["My Computer"],"levelNames":["Base"]},{"code":"I166","type":null,"symbols":["XF86Back"],"labels":["Back"],"levelNames":["Base"]},{"code":"I167","type":null,"symbols":["XF86Forward"],"labels":["Forward"],"levelNames":["Base"]},{"code":"I169","type":null,"symbols":["XF86Eject"],"labels":["Eject"],"levelNames":["Base"]},{"code":"I170","type":null,"symbols":["XF86Eject"],"labels":["Eject"],"levelNames":["Base"]},{"code":"I171","type":null,"symbols":["XF86AudioNext"],"labels":["Audio Next"],"levelNames":["Base"]},{"code":"I172","type":null,"symbols":["XF86AudioPlay","XF86AudioPause"],"labels":["Audio Play","Audio Pause"],"levelNames":["Base","Shift"]},{"code":"I173","type":null,"symbols":["XF86AudioPrev"],"labels":["Audio Prev"],"levelNames":["Base"]},{"code":"I174","type":null,"symbols":["XF86AudioStop","XF86Eject"],"labels":["Audio Stop","Eject"],"levelNames":["Base","Shift"]},{"code":"I175","type":null,"symbols":["XF86AudioRecord"],"labels":["Audio Record"],"levelNames":["Base"]},{"code":"I176","type":null,"symbols":["XF86AudioRewind"],"labels":["Audio Rewind"],"levelNames":["Base"]},{"code":"I177","type":null,"symbols":["XF86Phone"],"labels":["Phone"],"levelNames":["Base"]},{"code":"I179","type":null,"symbols":["XF86Tools"],"labels":["Tools"],"levelNames":["Base"]},{"code":"I180","type":null,"symbols":["XF86HomePage"],"labels":["Home Page"],"levelNames":["Base"]},{"code":"I181","type":null,"symbols":["XF86Reload"],"labels":["Reload"],"levelNames":["Base"]},{"code":"I182","type":null,"symbols":["XF86Close"],"labels":["Close"],"levelNames":["Base"]},{"code":"I185","type":null,"symbols":["XF86ScrollUp"],"labels":["Scroll Up"],"levelNames":["Base"]},{"code":"I186","type":null,"symbols":["XF86ScrollDown"],"labels":["Scroll Down"],"levelNames":["Base"]},{"code":"I187","type":null,"symbols":["parenleft"],"labels":["("],"levelNames":["Base"]},{"code":"I188","type":null,"symbols":["parenright"],"labels":[")"],"levelNames":["Base"]},{"code":"I189","type":null,"symbols":["XF86New"],"labels":["New"],"levelNames":["Base"]},{"code":"I190","type":null,"symbols":["Redo"],"labels":["Redo"],"levelNames":["Base"]},{"code":"FK13","type":null,"symbols":["XF86Tools"],"labels":["Tools"],"levelNames":["Base"]},{"code":"FK14","type":null,"symbols":["XF86Launch5"],"labels":["Launch5"],"levelNames":["Base"]},{"code":"FK15","type":null,"symbols":["XF86Launch6"],"labels":["Launch6"],"levelNames":["Base"]},{"code":"FK16","type":null,"symbols":["XF86Launch7"],"labels":["Launch7"],"levelNames":["Base"]},{"code":"FK17","type":null,"symbols":["XF86Launch8"],"labels":["Launch8"],"levelNames":["Base"]},{"code":"FK18","type":null,"symbols":["XF86Launch9"],"labels":["Launch9"],"levelNames":["Base"]},{"code":"FK20","type":null,"symbols":["XF86AudioMicMute"],"labels":["Audio Mic Mute"],"levelNames":["Base"]},{"code":"FK21","type":null,"symbols":["XF86TouchpadToggle"],"labels":["Touchpad Toggle"],"levelNames":["Base"]},{"code":"FK22","type":null,"symbols":["XF86TouchpadOn"],"labels":["Touchpad On"],"levelNames":["Base"]},{"code":"FK23","type":"PC_SHIFT_SUPER_LEVEL2","symbols":["XF86TouchpadOff","XF86Assistant"],"labels":["Touchpad Off","Assistant"],"levelNames":["Base","Super"]},{"code":"LVL5","type":null,"symbols":["ISO_Level5_Shift"],"labels":["Level 5"],"levelNames":["Base"]},{"code":"ALT","type":null,"symbols":["NoSymbol","Alt_L"],"labels":["","Alt"],"levelNames":["Base","Shift"]},{"code":"META","type":null,"symbols":["NoSymbol","Meta_L"],"labels":["","Meta L"],"levelNames":["Base","Shift"]},{"code":"SUPR","type":null,"symbols":["NoSymbol","Super_L"],"labels":["","Super"],"levelNames":["Base","Shift"]},{"code":"HYPR","type":null,"symbols":["NoSymbol","Hyper_L"],"labels":["","Hyper L"],"levelNames":["Base","Shift"]},{"code":"I208","type":null,"symbols":["XF86AudioPlay"],"labels":["Audio Play"],"levelNames":["Base"]},{"code":"I209","type":null,"symbols":["XF86AudioPause"],"labels":["Audio Pause"],"levelNames":["Base"]},{"code":"I210","type":null,"symbols":["XF86Launch3"],"labels":["Launch3"],"levelNames":["Base"]},{"code":"I211","type":null,"symbols":["XF86Launch4"],"labels":["Launch4"],"levelNames":["Base"]},{"code":"I212","type":null,"symbols":["XF86LaunchB"],"labels":["Launch B"],"levelNames":["Base"]},{"code":"I213","type":null,"symbols":["XF86Suspend"],"labels":["Suspend"],"levelNames":["Base"]},{"code":"I214","type":null,"symbols":["XF86Close"],"labels":["Close"],"levelNames":["Base"]},{"code":"I215","type":null,"symbols":["XF86AudioPlay"],"labels":["Audio Play"],"levelNames":["Base"]},{"code":"I216","type":null,"symbols":["XF86AudioForward"],"labels":["Audio Forward"],"levelNames":["Base"]},{"code":"I218","type":null,"symbols":["Print"],"labels":["Print"],"levelNames":["Base"]},{"code":"I220","type":null,"symbols":["XF86WebCam"],"labels":["Web Cam"],"levelNames":["Base"]},{"code":"I221","type":null,"symbols":["XF86AudioPreset"],"labels":["Audio Preset"],"levelNames":["Base"]},{"code":"I223","type":null,"symbols":["XF86Mail"],"labels":["Mail"],"levelNames":["Base"]},{"code":"I224","type":null,"symbols":["XF86Messenger"],"labels":["Messenger"],"levelNames":["Base"]},{"code":"I225","type":null,"symbols":["XF86Search"],"labels":["Search"],"levelNames":["Base"]},{"code":"I226","type":null,"symbols":["XF86Go"],"labels":["Go"],"levelNames":["Base"]},{"code":"I227","type":null,"symbols":["XF86Finance"],"labels":["Finance"],"levelNames":["Base"]},{"code":"I228","type":null,"symbols":["XF86Game"],"labels":["Game"],"levelNames":["Base"]},{"code":"I229","type":null,"symbols":["XF86Shop"],"labels":["Shop"],"levelNames":["Base"]},{"code":"I231","type":null,"symbols":["Cancel"],"labels":["Cancel"],"levelNames":["Base"]},{"code":"I232","type":null,"symbols":["XF86MonBrightnessDown"],"labels":["Mon Brightness Down"],"levelNames":["Base"]},{"code":"I233","type":null,"symbols":["XF86MonBrightnessUp"],"labels":["Mon Brightness Up"],"levelNames":["Base"]},{"code":"I234","type":null,"symbols":["XF86AudioMedia"],"labels":["Audio Media"],"levelNames":["Base"]},{"code":"I235","type":null,"symbols":["XF86Display"],"labels":["Display"],"levelNames":["Base"]},{"code":"I236","type":null,"symbols":["XF86KbdLightOnOff"],"labels":["Kbd Light On Off"],"levelNames":["Base"]},{"code":"I237","type":null,"symbols":["XF86KbdBrightnessDown"],"labels":["Kbd Brightness Down"],"levelNames":["Base"]},{"code":"I238","type":null,"symbols":["XF86KbdBrightnessUp"],"labels":["Kbd Brightness Up"],"levelNames":["Base"]},{"code":"I239","type":null,"symbols":["XF86Send"],"labels":["Send"],"levelNames":["Base"]},{"code":"I240","type":null,"symbols":["XF86Reply"],"labels":["Reply"],"levelNames":["Base"]},{"code":"I241","type":null,"symbols":["XF86MailForward"],"labels":["Mail Forward"],"levelNames":["Base"]},{"code":"I242","type":null,"symbols":["XF86Save"],"labels":["Save"],"levelNames":["Base"]},{"code":"I243","type":null,"symbols":["XF86Documents"],"labels":["Documents"],"levelNames":["Base"]},{"code":"I244","type":null,"symbols":["XF86Battery"],"labels":["Battery"],"levelNames":["Base"]},{"code":"I245","type":null,"symbols":["XF86Bluetooth"],"labels":["Bluetooth"],"levelNames":["Base"]},{"code":"I246","type":null,"symbols":["XF86WLAN"],"labels":["WLAN"],"levelNames":["Base"]},{"code":"I247","type":null,"symbols":["XF86UWB"],"labels":["UWB"],"levelNames":["Base"]},{"code":"I249","type":null,"symbols":["XF86Next_VMode"],"labels":["Next VMode"],"levelNames":["Base"]},{"code":"I250","type":null,"symbols":["XF86Prev_VMode"],"labels":["Prev VMode"],"levelNames":["Base"]},{"code":"I251","type":null,"symbols":["XF86MonBrightnessCycle"],"labels":["Mon Brightness Cycle"],"levelNames":["Base"]},{"code":"I252","type":null,"symbols":["XF86BrightnessAuto"],"labels":["Brightness Auto"],"levelNames":["Base"]},{"code":"I253","type":null,"symbols":["XF86DisplayOff"],"labels":["Display Off"],"levelNames":["Base"]},{"code":"I254","type":null,"symbols":["XF86WWAN"],"labels":["WWAN"],"levelNames":["Base"]},{"code":"I255","type":null,"symbols":["XF86RFKill"],"labels":["RFKill"],"levelNames":["Base"]}]};
+  </script>
+</body>
+</html>

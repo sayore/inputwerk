@@ -12,6 +12,8 @@ import {
 import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import bundledMap from "../keymaps/amelie.full.xkb" with { type: "file" };
+import { parseKeymap } from "./keymap";
+import { renderKeymapHtml, renderKeymapSvg } from "./visualize";
 
 type Scope = "user" | "etc" | "system";
 type Target = "cosmic";
@@ -244,11 +246,40 @@ async function importMap(path: string): Promise<void> {
   await validate();
 }
 
+function visualize(
+  sourcePath: string | undefined,
+  outputPath: string,
+  jsonPath?: string,
+  svgPath?: string,
+  layer = 1,
+): void {
+  const input = sourcePath ? resolve(sourcePath) : source;
+  if (!existsSync(input)) fail(`Visualization source does not exist: ${input}`);
+  const keymap = parseKeymap(readFileSync(input, "utf8"), basename(input));
+  const output = resolve(outputPath);
+  atomicWrite(output, renderKeymapHtml(keymap));
+  info(`Rendered ${keymap.levels.length} layers and ${keymap.rows.flatMap((row) => row.keys).length + keymap.extras.length} keys to ${output}`);
+  if (jsonPath) {
+    const json = resolve(jsonPath);
+    atomicWrite(json, `${JSON.stringify(keymap, null, 2)}\n`);
+    info(`Wrote reusable keymap data to ${json}`);
+  }
+  if (svgPath) {
+    if (!Number.isInteger(layer) || layer < 1 || layer > keymap.levels.length) {
+      fail(`Preview layer must be between 1 and ${keymap.levels.length}`);
+    }
+    const svg = resolve(svgPath);
+    atomicWrite(svg, renderKeymapSvg(keymap, layer - 1));
+    info(`Wrote layer ${layer} preview to ${svg}`);
+  }
+}
+
 function usage(): void {
   console.log(`Usage:
   inputwerk import --source /path/to/full.xkb
   inputwerk generate
   inputwerk validate
+  inputwerk visualize [--source map.xkb] [--output keymap.html] [--json keymap.json] [--svg preview.svg] [--layer 1]
   inputwerk install --target cosmic --scope user|etc|system
   inputwerk status`);
 }
@@ -259,6 +290,15 @@ async function main(): Promise<void> {
   if (command === "generate") return generate();
   if (command === "validate") return validate();
   if (command === "status") return status();
+  if (command === "visualize") {
+    return visualize(
+      valueAfter(args, "--source"),
+      valueAfter(args, "--output") ?? "inputwerk-keymap.html",
+      valueAfter(args, "--json"),
+      valueAfter(args, "--svg"),
+      Number(valueAfter(args, "--layer") ?? "1"),
+    );
+  }
   if (command === "import") {
     const path = valueAfter(args, "--source") ?? fail("import requires --source");
     return importMap(path);
